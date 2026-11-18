@@ -42,13 +42,21 @@ LoopVBlank:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Draw 192 visible scanlines (kernel)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	ldx #192		 ; counter for 192 visible scanlines
+	ldx #254		 ; counter for 192 visible scanlines (js test)
 LoopVisible:
     stx COLUBK       ; set the background color
     sta WSYNC		 ; wait for the next scanline
 	dex				 ; X--
+	dex
 	bne LoopVisible  ; loop while X != 0
+	stx COLUBK       ; X is now 0 ($00 = pure black), set it for the 128th color!
+	sta WSYNC        ; Draw the 128th scanline
 
+	ldx #64          ; Draw 64 remaining black scanlines to reach 192 total
+LoopPadding:
+	sta WSYNC
+	dex
+	bne LoopPadding
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Output 30 more VBLANK lines (overscan) to complete our frame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

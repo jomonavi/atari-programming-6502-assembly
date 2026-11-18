@@ -19,6 +19,7 @@ MemLoop:
     sta $0,X        ; Store the value of A inside memory address $0 + X
     dex             ; X--
     bne MemLoop     ; Loop until X is equal to zero (z-flag is set)
+    sta #0          ; Make sure the zeroth address is cleared (off by 1 w/o)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Fill the ROM size to exactly 4KB
