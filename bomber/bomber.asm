@@ -16,6 +16,10 @@ JetXPos         byte         ; player0 x-position
 JetYPos         byte         ; player0 y-position
 BomberXPos      byte         ; player1 x-position
 BomberYPos      byte         ; player1 y-position
+Score           byte         ; 2-digit score stored as BCD
+Timer           byte         ; 2-digit score stored as BCD
+OnesDigitOffset word         ; lookup table offset for the score 1's digit
+TensDigitOffset word         ; lookup table offset for the score 10's digit
 JetSpritePtr    word         ; pointer to player0 sprite lookup table
 JetColorPtr     word         ; pointer to player0 color lookup table
 BomberSpritePtr word         ; pointer to player1 sprite lookup table
@@ -28,6 +32,7 @@ Random          byte         ; used to generate random bomber x-position
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 JET_HEIGHT = 9               ; player0 sprite height (# rows in lookup table)
 BOMBER_HEIGHT = 9            ; player1 sprite height (# rows in lookup table)
+DIGITS_HEIGT = 5
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Start our ROM code at memory address $F000
@@ -51,6 +56,9 @@ Reset:
     sta BomberYPos           ; BomberYPos = 83
     lda #%11010100
     sta Random               ; Random = $D4
+    lda #0
+    sta Score                ; Score = 0
+    sta Timer                ; Timer = 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Initialize the pointers to the correct lookup table adresses
@@ -81,7 +89,22 @@ Reset:
 StartFrame:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Calculations and tasks performed in the pre-VBlank
+;; Display VSYNC and VBLANK
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    lda #2
+    sta VBLANK               ; turn on VBLANK
+    sta VSYNC                ; turn on VSYNC
+    REPEAT 3
+        sta WSYNC            ; display 3 recommended lines of VSYNC
+    REPEND
+    lda #0
+    sta VSYNC                ; turn off VSYNC
+    REPEAT 33
+        sta WSYNC            ; display the 37 recommended lines of VBLANK
+    REPEND
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;; Calculations and tasks performed in the pre-VBlank
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda JetXPos
     ldy #0
@@ -94,20 +117,7 @@ StartFrame:
     sta WSYNC
     sta HMOVE                ; apply the horizontal offsets previously set
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Display VSYNC and VBLANK
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    lda #2
-    sta VBLANK               ; turn on VBLANK
-    sta VSYNC                ; turn on VSYNC
-    REPEAT 3
-        sta WSYNC            ; display 3 recommended lines of VSYNC
-    REPEND
     lda #0
-    sta VSYNC                ; turn off VSYNC
-    REPEAT 37
-        sta WSYNC            ; display the 37 recommended lines of VBLANK
-    REPEND
     sta VBLANK               ; turn off VBLANK
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -337,6 +347,10 @@ GetRandomBomberPos subroutine
     sta BomberYPos           ; set the y-position to the top of the screen
 
     rts
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Subroutine to handle scoreboard digits to be displayed on the screen
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Declare ROM lookup tables
