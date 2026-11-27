@@ -31,6 +31,7 @@ ScoreSprite     byte         ; store the sprite bit pattern for the score
 TimerSprite     byte         ; store the sprite bit pattern for the timer
 TerrainColor    byte         ; store the color of the terrain playfield
 RiverColor      byte         ; store the color of the river playfield
+PositionChecked byte         ; var to reuse when checking bounds in subroutine
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Define constants
@@ -282,6 +283,11 @@ CheckP0Up:
     bit SWCHA                ; if (bit pattern is not joystick up)
     bne CheckP0Down          ;     then: skip to test next input option
 .P0IsUp:                     ;     else:
+    lda #88
+    ldy JetYPos
+    sty PositionChecked
+    jsr CheckBounds
+    beq CheckP0Down
     inc JetYPos              ;         increment jet Y position
     lda #0
     sta JetAnimOffset        ;         set jet frame of animation to first one
@@ -291,6 +297,11 @@ CheckP0Down:
     bit SWCHA                ; if (bit pattern is not joystick down)
     bne CheckP0Left          ;     then: skip to test next input option
 .P0IsDown:                   ;     else:
+    lda #0
+    ldy JetYPos
+    sty PositionChecked
+    jsr CheckBounds
+    beq CheckP0Left
     dec JetYPos              ;         decrement jet Y position
     lda #0
     sta JetAnimOffset        ;         set jet frame of animation to first one
@@ -300,6 +311,11 @@ CheckP0Left:
     bit SWCHA                ; if (bit pattern is not joystick left)
     bne CheckP0Right         ;     then: skip to test next input option
 .P0IsLeft:                   ;     else:
+    lda #40
+    ldy JetXPos
+    sty PositionChecked
+    jsr CheckBounds
+    beq CheckP0Right
     dec JetXPos              ;         decrement jet X position
     lda JET_HEIGHT
     sta JetAnimOffset        ;         set jet to second frame of animation
@@ -309,6 +325,11 @@ CheckP0Right:
     bit SWCHA                ; if (bit pattern is not joystick right)
     bne EndInputCheck        ;     then: skip to test next input option
 .P0IsRight:                  ;     else:
+    lda #112
+    ldy JetXPos
+    sty PositionChecked
+    jsr CheckBounds
+    beq EndInputCheck
     inc JetXPos              ;         increment jet X position
     lda JET_HEIGHT
     sta JetAnimOffset        ;         set jet to second frame of animation
@@ -352,6 +373,13 @@ EndCollisionCheck:           ; fallback
 ;; Loop back to start a brand new frame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     jmp StartFrame           ; continue to display the next frame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Check boundary subroutine (pass register with boundary to subroutine)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CheckBounds subroutine
+    cmp PositionChecked       ; check whether the given bounds touches player
+    rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set the colors for the terrain and river to green & blue
