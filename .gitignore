@@ -6,6 +6,14 @@ __MACOSX/
 .LSOverride
 Icon[]
 
+# Ignore compiled Atari 2600 ROMs and DASM debug outputs
+*.bin
+*.a26
+*.lst
+*.sym
+bin/
+build/
+
 # Resource forks
 ._*
 

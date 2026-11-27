@@ -29,6 +29,8 @@ JetAnimOffset   byte         ; player0 frame offset for sprite animation
 Random          byte         ; used to generate random bomber x-position
 ScoreSprite     byte         ; store the sprite bit pattern for the score
 TimerSprite     byte         ; store the sprite bit pattern for the timer
+TerrainColor    byte         ; store the color of the terrain playfield
+RiverColor      byte         ; store the color of the river playfield
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Define constants
@@ -107,7 +109,7 @@ StartFrame:
     REPEND
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;; Calculations and tasks performed in the VBlank
+;; Calculations and tasks performed in the VBlank
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lda JetXPos
     ldy #0
@@ -128,16 +130,16 @@ StartFrame:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display the scoreboard lines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    lda #0
+    lda #0                   ; reset TIA registers before displaying the score
+    sta COLUBK
     sta PF0
     sta PF1
     sta PF2
     sta GRP0
-    sta GRP1                 
-    sta CTRLPF               
-    sta COLUBK               ; reset TIA registers before displaying the score
+    sta GRP1
+    sta CTRLPF
 
-    lda #$1e
+    lda #$1E
     sta COLUPF               ; set the scoreboard playfield color with yellow
 
     ldx #DIGITS_HEIGHT       ; start X counter with 5 (height of digits)
@@ -155,7 +157,6 @@ StartFrame:
     sta ScoreSprite          ; and save it
     sta WSYNC                ; wait for the end of scanline
     sta PF1                  ; update the playfield to display the Score sprite
-
 
     ldy TensDigitOffset+1    ; get the left digit offset for the Timer
     lda Digits,Y             ; load the digit pattern from lookup table
@@ -201,10 +202,12 @@ StartFrame:
 ;; Display the remaining visible scanlines of our main game (2-line kernel)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GameVisibleLine:
-    lda #$84
-    sta COLUBK               ; set background/river color to blue
-    lda #$C2
-    sta COLUPF               ; set playfield/grass color to green
+    lda TerrainColor
+    sta COLUPF               ; set the terrain background color
+
+    lda RiverColor
+    sta COLUBK               ; set the river background color
+
     lda #%00000001
     sta CTRLPF               ; enable playfield reflection
     lda #$F0
@@ -323,6 +326,9 @@ UpdateBomberPosition:
     dec BomberYPos           ; else, decrement enemy y-position for next frame
     jmp EndPositionUpdate
 .ResetBomberPosition:
+    ldy Score
+    iny
+    sty Score
     jsr GetRandomBomberPos   ; call subroutine for random bomber position
 
 EndPositionUpdate:           ; fallback for the position update code
@@ -333,17 +339,10 @@ EndPositionUpdate:           ; fallback for the position update code
 CheckCollisionP0P1:
     lda #%10000000           ; CXPPMM bit 7 detects P0 and P1 collision
     bit CXPPMM               ; check CXPPMM bit 7 with the above pattern
-    bne .CollisionP0P1       ; if collision between P0 and P1 happened, branch
-    jmp CheckCollisionP0PF   ; else, skip to next check
-.CollisionP0P1:
-    jsr GameOver             ; call GameOver subroutine
-
-CheckCollisionP0PF:
-    lda #%10000000           ; CXP0FB bit 7 detects P0 and PF collision
-    bit CXP0FB               ; check CXP0FB bit 7 with the above pattern
-    bne .CollisionP0PF       ; if collision P0 and PF happened, branch
+    bne .P0P1Collided        ; if collision between P0 and P1 happened, branch
+    jsr SetTerrainRiverColor ; else, set playfield color to green/blue
     jmp EndCollisionCheck    ; else, skip to next check
-.CollisionP0PF:
+.P0P1Collided:
     jsr GameOver             ; call GameOver subroutine
 
 EndCollisionCheck:           ; fallback
@@ -353,6 +352,16 @@ EndCollisionCheck:           ; fallback
 ;; Loop back to start a brand new frame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     jmp StartFrame           ; continue to display the next frame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Set the colors for the terrain and river to green & blue
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+SetTerrainRiverColor subroutine
+    lda #$C2
+    sta TerrainColor         ; set terrain color to green
+    lda #$84
+    sta RiverColor           ; set river color to blue
+    rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Subroutine to handle object horizontal position with fine offset
@@ -380,7 +389,11 @@ SetObjectXPos subroutine
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GameOver subroutine
     lda #$30
-    sta COLUBK               ; Set background color to red on game over
+    sta TerrainColor         ; set terrain color to red
+    sta RiverColor           ; set river color to red
+    lda #0
+    sta Score                ; Score = 0
+    jmp GetRandomBomberPos
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
